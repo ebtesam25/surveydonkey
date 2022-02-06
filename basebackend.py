@@ -236,6 +236,126 @@ def dummy(request):
         return json.dumps(retjson)
 
 
+    if action == "getbalancedsurveyanswers":
+
+        col = db.surveys
+
+        for x in col.find():
+            if x['id'] != request_json['surveyid']:
+                continue
+            else:
+                retjson['name'] = x['name']
+                break
+
+        answers = []
+        col = db.questions
+
+        for x in col.find():
+            if x['surveyid'] == request_json['surveyid']:
+                a = {}
+                a['question'] = x['text']
+                a['type'] = x['type']
+                ans = []
+                qid = x['id']
+                col2 = db.answers
+
+                for y in col2.find():
+                    if y['questionid'] == qid:
+                        ans.append(y['answer'])
+                a['qid'] = qid
+                a['answers'] = ans
+
+                answers.append(a)
+        
+
+        if request_json['balanceby'] == 'gender':
+            answers2 = [] 
+            mcount = 0
+            fcount = 0
+            ncount = 0
+            for a in answers:
+                if 'gender' not in a['question']:
+                    continue 
+                for an in a['answers']:
+                    an = an.lower()
+                    if an == 'male':
+                        mcount +=1
+                    if an == 'female':
+                        fcount +=1                     
+                    if an == 'non-binary':
+                        ncount +=1
+            
+            maxcount = 0
+            apos = 0
+
+
+
+            if (mcount <= fcount) and (mcount <= ncount):
+                maxcount = mcount
+  
+            elif (fcount <= mcount) and (fcount <= ncount):
+                maxcount = fcount
+            else:
+                maxcount = ncount
+
+            mcount = 0
+            fcount = 0
+            ncount = 0
+            
+            flag = 0
+            targets = []
+            for a in answers:
+                if 'gender' not in a['question']:
+                    # apos +=1
+                    continue
+                apos =0
+                for an in a['answers']:
+                    an = an.lower()
+                    if an == 'male':
+                        mcount +=1
+                        if mcount > maxcount:
+                            targets.append(apos)
+                            apos+=1
+                            mcount -=1
+                            continue
+                    if an == 'female':
+                        fcount +=1
+                        if fcount > maxcount:
+                            targets.append(apos)
+                            apos+=1
+                            
+                            fcount -=1
+                            continue                     
+                    if an == 'non-binary':
+                        ncount +=1
+                        if ncount > maxcount:
+                            targets.append(apos)
+                            apos+=1
+                            
+                            ncount -=1
+                            continue
+                    apos +=1
+
+            
+            for a in answers:
+                mov = 0
+                for t in targets:
+                    
+                    a['answers'].pop(t-mov)
+                    mov += 1
+
+                
+                answers2.append(a)
+
+
+        retjson['answers'] = answers2
+
+        return json.dumps(retjson)
+
+
+    
+    
+    
 
     if action == "getuseridfromphone" :
         col = db.users
